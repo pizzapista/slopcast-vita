@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-patch_speedhack.py — anchor-based surgical patcher for the flycast-vita
+patch_speedhack.py — anchor-based surgical patcher for the slopcast-vita
 speed-hack layer.
 
 WHY NOT PLAIN .patch FILES FOR MODIFIED SOURCES
@@ -22,9 +22,9 @@ Guarantees:
   * Honest. Anchors that cannot be found are reported, not guessed at.
 
 Usage:
-  patch_speedhack.py --root /path/to/flycast-vita --check
-  patch_speedhack.py --root /path/to/flycast-vita --apply
-  patch_speedhack.py --root /path/to/flycast-vita --revert
+  patch_speedhack.py --root /path/to/slopcast-vita --check
+  patch_speedhack.py --root /path/to/slopcast-vita --apply
+  patch_speedhack.py --root /path/to/slopcast-vita --revert
 
 Exit codes:
   0  everything requested succeeded
@@ -43,6 +43,9 @@ import sys
 # ---------------------------------------------------------------------------
 # Marker format. Every inserted block is wrapped in these two lines so the
 # reverter can find it without pattern-matching the block body.
+#
+# The marker says "speedhack" because that is the module name; see README.md,
+# "A note on naming".
 # ---------------------------------------------------------------------------
 def _mark_begin(hid: str) -> str:
     return "// [speedhack] BEGIN " + hid
@@ -404,8 +407,6 @@ def apply_spec(root: str, spec: dict, report, dry: bool) -> str:
 
     # ---- copy (new files) ------------------------------------------------
     if kind == "copy":
-        src = os.path.join(root, "..", "files", spec["src"])
-        # Fall back: the files/ dir normally sits beside the script.
         src = os.path.join(SCRIPT_DIR, "files", spec["src"])
         dst = os.path.join(root, spec["dst"])
         if not os.path.exists(src):
@@ -524,9 +525,9 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(
-        description="Anchor-based patcher for the flycast-vita speed-hack layer.")
+        description="Anchor-based patcher for the slopcast-vita speed-hack layer.")
     ap.add_argument("--root", required=True,
-                    help="Path to the root of your flycast-vita checkout.")
+                    help="Path to the root of your slopcast-vita checkout.")
     g = ap.add_mutually_exclusive_group(required=True)
     g.add_argument("--check", action="store_true",
                    help="Report insertion points without writing anything.")
@@ -541,11 +542,11 @@ def main(argv=None) -> int:
         sys.stderr.write("ERROR: --root is not a directory: %s\n" % root)
         return 1
 
-    # Sanity: are we actually looking at flycast?
+    # Sanity: are we actually looking at a flycast-derived tree?
     marker = os.path.join(root, "core", "hw", "pvr")
     if not os.path.isdir(marker):
         sys.stderr.write(
-            "ERROR: %s does not look like a flycast checkout.\n"
+            "ERROR: %s does not look like a flycast-derived checkout.\n"
             "       Expected to find core/hw/pvr/ underneath it.\n" % root)
         return 1
 

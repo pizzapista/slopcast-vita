@@ -1,0 +1,44 @@
+Reference only — do NOT git-apply this blindly.
+
+CMake flag placement depends on where your target is created. See README.md,
+section "Manual D". The rules are:
+
+  1. add_compile_options() MUST run before the target it should affect is
+     created. Appending it at end-of-file does nothing.
+  2. If your build globs core/**/*.cpp, speedhack.cpp is picked up
+     automatically and you only need the flags.
+  3. -ffast-math is safe for the emulator core. Keep it off anything that
+     computes cycle timing.
+  4. Do NOT add -fno-exceptions or -fno-rtti without testing — the config and
+     UI layers use both.
+
+Locate your insertion point with:
+
+    grep -nE 'GLOB|target_sources|add_executable|add_library' CMakeLists.txt
+
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@
++# ---------------------------------------------------------------------------
++# [speedhack] Vita performance flags.
++# This block must sit BEFORE the first add_executable / add_library, or the
++# flags will not apply to any target. If your toolchain file already sets
++# some of these, remove the duplicates rather than overriding.
++# ---------------------------------------------------------------------------
++if(VITA)
++  add_compile_options(
++    -O3
++    -fomit-frame-pointer
++    -ffast-math
++    -fno-math-errno
++    -funroll-loops
++    -ftree-vectorize
++    -mfpu=neon
++    -mfloat-abi=hard
++    -mcpu=cortex-a9
++  )
++
++  # Only needed if the build does NOT glob core/**/*.cpp.
++  # Replace `flycast` with your actual target name.
++  target_sources(flycast PRIVATE core/hw/pvr/speedhack.cpp)
++endif()

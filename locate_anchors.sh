@@ -3,8 +3,8 @@
 # locate_anchors.sh — verify every anchor the patcher depends on exists in
 # YOUR tree, and show the exact line number.
 #
-# Run this from the root of your flycast-vita checkout, or pass the root:
-#     ./locate_anchors.sh [/path/to/flycast-vita]
+# Run this from the root of your slopcast-vita checkout, or pass the root:
+#     ./locate_anchors.sh [/path/to/slopcast-vita]
 #
 # It writes nothing. It only reads.
 
@@ -14,7 +14,7 @@ ROOT="${1:-.}"
 ROOT="$(cd "$ROOT" && pwd)"
 
 if [ ! -d "$ROOT/core/hw/pvr" ]; then
-    echo "ERROR: $ROOT does not look like a flycast checkout."
+    echo "ERROR: $ROOT does not look like a flycast-derived checkout."
     echo "       Expected core/hw/pvr/ underneath it."
     exit 1
 fi
@@ -88,8 +88,8 @@ report "GD-ROM serial"     core/hw/gdrom/gdrom.cpp \
        'GameId|game_id|GetGameId'
 
 echo
-echo "GAME SERIAL — where your fork exposes it (pick one, define the weak hook there)"
-echo "------------------------------------------------------------------------------"
+echo "GAME SERIAL — where your fork exposes it (define the weak hook there)"
+echo "---------------------------------------------------------------------"
 grep -rn "GameId\|game_id\|GetGameId" core/cfg/ core/hw/gdrom/ 2>/dev/null \
     | head -8 | sed 's/^/  /' || echo "  (no match — search the tree by hand)"
 

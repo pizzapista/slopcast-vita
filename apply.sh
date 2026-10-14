@@ -3,9 +3,9 @@
 # apply.sh — thin wrapper around patch_speedhack.py.
 #
 # Usage:
-#   ./apply.sh --check  [/path/to/flycast-vita]
-#   ./apply.sh --apply  [/path/to/flycast-vita]
-#   ./apply.sh --revert [/path/to/flycast-vita]
+#   ./apply.sh --check  [/path/to/slopcast-vita]
+#   ./apply.sh --apply  [/path/to/slopcast-vita]
+#   ./apply.sh --revert [/path/to/slopcast-vita]
 #
 # If no root is given, the current directory is assumed.
 
@@ -44,7 +44,7 @@ if [ "$MODE" = "--apply" ] && [ "$RC" -eq 0 ]; then
     echo "  1. Add core/hw/pvr/speedhack.cpp to your build if CMake does not glob."
     echo "  2. Wire the weak serial hook (see README, 'Wiring the game serial')."
     echo "  3. Apply the manual hooks (see README, 'Manual hooks')."
-    echo "  4. Build, then:  FLYCAST_VITA_LOG=1 ./flycast"
+    echo "  4. Build, then:  SLOPCAST_VITA_LOG=1 ./flycast"
     echo
     echo "Revert with: $0 --revert $ROOT"
 fi

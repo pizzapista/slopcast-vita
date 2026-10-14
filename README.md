@@ -1,8 +1,10 @@
-# flycast-vita — Speed-Hack Layer
+# slopcast-vita — Speed-Hack Layer
 
-Performance-first patches for a fork of **`Rinnegatamante/flycast-vita`**, based on upstream commit `446f887741ce38596224e6cea83148627d4263e6`.
+Performance-first patches for **slopcast-vita**, a fork of `Rinnegatamante/flycast-vita` based on upstream commit `446f887741ce38596224e6cea83148627d4263e6`.
 
 Target titles: **Sonic Adventure**, **Crazy Taxi**, **Virtua Tennis** — and anything else where gameplay framerate matters more than graphic or audio accuracy.
+
+> **A note on naming.** The *fork* is slopcast-vita. The *module* it carries is still called `speedhack` — that is the subsystem name, the way `dynarec` and `rend` are subsystem names, and it is what the in-tree files `core/hw/pvr/speedhack.{h,cpp}` and the `// [speedhack] BEGIN/END` revert markers say. Project-level naming (package, env vars, log prefix) says slopcast.
 
 ---
 
@@ -23,7 +25,7 @@ Run `./locate_anchors.sh` first. It tells you, in about two seconds, exactly whi
 ## Contents
 
 ```
-flycast-vita-speedhack/
+slopcast-vita/
 ├── README.md                     ← you are here
 ├── locate_anchors.sh             ← verify anchors against your tree
 ├── apply.sh                      ← wrapper around the applier
@@ -42,21 +44,20 @@ flycast-vita-speedhack/
 
 ## Quick start
 
-```
-# 0. From the root of your fork
-cd /path/to/flycast-vita
+Unpack this package somewhere convenient, e.g. `~/slopcast-vita`. Then, pointing it at your emulator checkout:
 
-# 1. Confirm the anchors exist in YOUR tree
-/path/to/flycast-vita-speedhack/locate_anchors.sh
+```
+# 1. Confirm the anchors exist in YOUR tree (writes nothing)
+~/slopcast-vita/locate_anchors.sh  /path/to/your/checkout
 
 # 2. Dry run — reports every insertion point, writes nothing
-/path/to/flycast-vita-speedhack/apply.sh --check
+~/slopcast-vita/apply.sh --check   /path/to/your/checkout
 
 # 3. Apply
-/path/to/flycast-vita-speedhack/apply.sh --apply
+~/slopcast-vita/apply.sh --apply   /path/to/your/checkout
 
 # 4. Revert if you want the tree back
-/path/to/flycast-vita-speedhack/apply.sh --revert
+~/slopcast-vita/apply.sh --revert  /path/to/your/checkout
 ```
 
 The applier backs up every file it touches to `<file>.speedhack.bak` before the first modification and refuses to overwrite an existing backup.
@@ -70,13 +71,13 @@ Each of these is a **top-of-function** insertion — robust across revisions bec
 | # ↕▾ | File ↕▾ | Function ↕▾ | Effect ↕▾ |
 |---|---|---|---|
 | −1 | `core/hw/sh4/dynarec/sh4_fpu.cpp` | `UpdateFPSCR()` | Early-out when the host-relevant FPSCR bits are unchanged |
-| 2 | `core/hw/sh4/dynarec/sh4_fpu.cpp` | `SetFPSCR(...)` | Force `PR`/`FR`/`SZ` off → single-precision, single-bank FPU |
-| 3 | `core/hw/sh4/dynarec/dynarec.cpp` | `RuntimeBlockCheck(...)` | Skip self-modifying-code invalidation |
-| 4 | `core/hw/aica/dsp.cpp` | `dsp_step()` | Bypass the Yamaha DSP compute, keep the register handshake |
-| 5 | `core/hw/aica/dsp.cpp` | `dsp_writenmem(...)` | Swallow DSP program uploads when the DSP is off |
-| 6 | `core/hw/aica/aica.cpp` | `AICA_Sample()` | Sample-rate divider (÷1 / ÷2 / ÷4) |
-| 7 | `core/hw/aica/aica.cpp` | `UpdateArm7(...)` | Alternate-tick ARM7 stepping |
-| 8 | `core/hw/pvr/rend.cpp` | before `renderer->draw(` | Drop modifier volumes + shadow pre-pass |
+| −2 | `core/hw/sh4/dynarec/sh4_fpu.cpp` | `SetFPSCR(...)` | Force `PR`/`FR`/`SZ` off → single-precision, single-bank FPU |
+| −3 | `core/hw/sh4/dynarec/dynarec.cpp` | `RuntimeBlockCheck(...)` | Skip self-modifying-code invalidation |
+| −4 | `core/hw/aica/dsp.cpp` | `dsp_step()` | Bypass the Yamaha DSP compute, keep the register handshake |
+| −5 | `core/hw/aica/dsp.cpp` | `dsp_writenmem(...)` | Swallow DSP program uploads when the DSP is off |
+| −6 | `core/hw/aica/aica.cpp` | `AICA_Sample()` | Sample-rate divider (÷1 / ÷2 / ÷4) |
+| −7 | `core/hw/aica/aica.cpp` | `UpdateArm7(...)` | Alternate-tick ARM7 stepping |
+| −8 | `core/hw/pvr/rend.cpp` | before `renderer->draw(` | Drop modifier volumes + shadow pre-pass |
 ⚙
 
 Hook **8** is the only one with a caveat: the inserted block references the local `RenderType` in scope. On upstream at `446f887` that local is `rt`. If your fork renamed it, the compiler will flag the exact line and the fix is a one-word rename. The applier will tell you when it inserts there so you know where to look.
@@ -238,15 +239,15 @@ The profile is resolved **lazily on first query** — there is no init call to w
 
 | Variable ↕▾ | Values ↕▾ | Meaning ↕▾ |
 |---|---|---|
-| −`FLYCAST_VITA_SPEED` | `0`–`3` | Preset: Accurate / Balanced / Speed / Fastest |
-| `FLYCAST_VITA_PROFILE` | serial, or `off` | Force a title profile, or disable the title table |
-| `FLYCAST_VITA_PERSTRIP` | `0`/`1` | Override per-strip flush |
-| `FLYCAST_VITA_MODVOLS` | `0`/`1` | Override modifier-volume skip |
-| `FLYCAST_VITA_SHADOW` | `0`/`1` | Override shadow pre-pass skip |
-| `FLYCAST_VITA_RTT` | `0`/`1` | Override RTT / readback kill |
-| `FLYCAST_VITA_AUDIO_DSP` | `0`/`1` | Run the Yamaha DSP at all |
-| `FLYCAST_VITA_AUDIO_DIV` | `1`/`2`/`4` | Audio sample-rate divider |
-| `FLYCAST_VITA_LOG` | `0`/`1` | Print the resolved profile at first use |
+| −`SLOPCAST_VITA_SPEED` | `0`–`3` | Preset: Accurate / Balanced / Speed / Fastest |
+| −`SLOPCAST_VITA_PROFILE` | serial, or `off` | Force a title profile, or disable the title table |
+| −`SLOPCAST_VITA_PERSTRIP` | `0`/`1` | Override per-strip flush |
+| −`SLOPCAST_VITA_MODVOLS` | `0`/`1` | Override modifier-volume skip |
+| −`SLOPCAST_VITA_SHADOW` | `0`/`1` | Override shadow pre-pass skip |
+| −`SLOPCAST_VITA_RTT` | `0`/`1` | Override RTT / readback kill |
+| −`SLOPCAST_VITA_AUDIO_DSP` | `0`/`1` | Run the Yamaha DSP at all |
+| −`SLOPCAST_VITA_AUDIO_DIV` | `1`/`2`/`4` | Audio sample-rate divider |
+| −`SLOPCAST_VITA_LOG` | `0`/`1` | Print the resolved profile at first use |
 ⚙
 
 On a non-Vita build the default preset is `Accurate`, so a shared tree behaves exactly as before on PC. On `__vita__` the default is `Speed`.
@@ -254,8 +255,8 @@ On a non-Vita build the default preset is `Accurate`, so a shared tree behaves e
 Example A/B session:
 
 ```
-FLYCAST_VITA_SPEED=3 FLYCAST_VITA_MODVOLS=1 FLYCAST_VITA_LOG=1 ./flycast
-FLYCAST_VITA_SPEED=3 FLYCAST_VITA_MODVOLS=0 FLYCAST_VITA_LOG=1 ./flycast
+SLOPCAST_VITA_SPEED=3 SLOPCAST_VITA_MODVOLS=1 SLOPCAST_VITA_LOG=1 ./flycast
+SLOPCAST_VITA_SPEED=3 SLOPCAST_VITA_MODVOLS=0 SLOPCAST_VITA_LOG=1 ./flycast
 ```
 
 The log line tells you exactly what was resolved, including which title profile matched.
@@ -294,12 +295,13 @@ grep -rn "GameId\|game_id\|GetGameId\|serial" core/hw/gdrom/ core/cfg/ | head -3
 
 The compiled-in table in `speedhack.cpp` (mirrored in `profiles/titles.conf`):
 
-| Title | perStrip | modVols | shadowPass | RTT | aicaDSP | sampleDiv | Rationale |
+| Title ↕▾ | perStrip ↕▾ | modVols ↕▾ | shadowPass ↕▾ | RTT ↕▾ | aicaDSP ↕▾ | sampleDiv ↕▾ | Rationale ↕▾ |
 |---|---|---|---|---|---|---|---|
-| **Sonic Adventure** | ✗ | **cut** | **cut** | **cut** | ✗ | 2 | FTRV-heavy geometry + real shadow volumes. Modvol and RTT cuts are the whole ballgame; leave batching alone. |
-| **Sonic Adventure 2** | ✗ | **cut** | **cut** | **cut** | ✗ | 2 | Same shape as SA, slightly heavier. |
-| **Crazy Taxi** | **on** | **cut** | keep | **cut** | **cut** | 2 | Translucent-heavy. Per-strip beats batching here. The DSP reverb is expensive and nobody misses it. |
-| **Virtua Tennis** | ✗ | **cut** | keep | **cut** | keep | 1 | Tiny scene, already fast. **Do not** drop the shadow pass or the DSP — ball shadow and hit transients are gameplay feel. |
+| −**Sonic Adventure** | ✗ | **cut** | **cut** | **cut** | ✗ | 2 | FTRV-heavy geometry + real shadow volumes. Modvol and RTT cuts are the whole ballgame; leave batching alone. |
+| −**Sonic Adventure 2** | ✗ | **cut** | **cut** | **cut** | ✗ | 2 | Same shape as SA, slightly heavier. |
+| −**Crazy Taxi** | **on** | **cut** | keep | **cut** | **cut** | 2 | Translucent-heavy. Per-strip beats batching here. The DSP reverb is expensive and nobody misses it. |
+| −**Virtua Tennis** | ✗ | **cut** | keep | **cut** | keep | 1 | Tiny scene, already fast. **Do not** drop the shadow pass or the DSP — ball shadow and hit transients are gameplay feel. |
+⚙
 
 The through-line: **`skipRTT` and `skipModVolumes` are near-universal wins; `perStrip` and the audio cuts are per-title.** Tune in that order.
 
@@ -331,7 +333,7 @@ Do not batch. The whole point of the environment-variable config is that you nev
 ## Reverting
 
 ```
-./apply.sh --revert
+~/slopcast-vita/apply.sh --revert /path/to/your/checkout
 ```
 
 Removes every marked block and deletes the two copied files. Original `.speedhack.bak` backups are left in place — delete them by hand once you are satisfied.
